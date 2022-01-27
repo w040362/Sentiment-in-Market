@@ -1,5 +1,4 @@
 import torch
-import torch.nn as nn
 from torch.utils.data import TensorDataset, DataLoader
 import numpy as np
 import matplotlib.pyplot as plt
@@ -48,7 +47,10 @@ data_open = df['Open'].values.reshape(-1, 1)
 # plt.plot(data_close, '-')
 # plt.show()
 
-data_, ss = standardize(data_close)
+data_close_, ss_close = standardize(data_close)
+data_open_, ss_open = standardize(data_open)
+data_ = np.hstack((data_close_, data_open_))
+
 x, y = extract_pair(data_, WIDTH)
 x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.2)
 # print(data_.shape)
@@ -57,35 +59,8 @@ x_train = torch.tensor(x_train, dtype=torch.float32)    # (total, width, input_s
 y_train = torch.tensor(y_train, dtype=torch.float32)
 x_test = torch.tensor(x_test, dtype=torch.float32)
 y_test = torch.tensor(y_test, dtype=torch.float32)
-# print(x_train.shape)
+print(x_train.shape)
 # print(y_train.shape)
 data_train = TensorDataset(x_train, y_train)
 data_loader = DataLoader(data_train, BATCH_SIZE, shuffle=True)
 # print(data_train[0:2])
-
-# ------------- train -------------
-model = NaivePredictor(INPUT_SIZE, HIDDEN_SIZE, NUM_LAYERS)
-
-optimizer = torch.optim.SGD(model.parameters(), lr, momentum=0.9)
-loss_func = nn.MSELoss()
-
-for epoch in range(EPOCH):
-    for step, (b_x, b_y) in enumerate(data_loader):
-        # print(b_x.shape)
-        # print(b_y.shape)
-        # b_x.shape (batch_size, width, input_size)
-        out = model(b_x)
-        # print(out.shape)
-        loss = loss_func(out, b_y)
-
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
-
-        if step % 10 == 0:
-            print('epoch: {} | step: {} | loss: {}'.format(epoch, step, loss))
-            print(loss)
-
-model_path = './model.pth'
-torch.save(model, model_path)
-
