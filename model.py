@@ -99,7 +99,7 @@ class textCNN(nn.Module):
     def forward(self, x):
         x = x.unsqueeze(1)  # add 1 channel (batch_size, 1, seq_len=256, hidden_size=768)
         batch_size = x.shape[0]
-        print(x)
+        # print(x)
 
         # print(x.shape)
         conv_x = self.conv(x)
@@ -108,6 +108,7 @@ class textCNN(nn.Module):
         # print(flat_x.shape)   # (bs, ch*1*1)
         out = self.fc(flat_x)
         print(out)
+        print(out.shape)
         return out
 
 

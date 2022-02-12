@@ -83,7 +83,7 @@ train_data = Data.DataLoader(token_data, batch_size=BATCH_SIZE, shuffle=True)
 
 # training
 model = BertCNN(bert_model)
-optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
+optimizer = torch.optim.Adam(model.textCNN.parameters(), lr=learning_rate, weight_decay=weight_decay)   # ??
 loss_func = nn.CrossEntropyLoss()
 training_loss = []
 
