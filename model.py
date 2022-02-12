@@ -74,3 +74,31 @@ class BiPredictor(nn.Module):
     def predict(self, x):
         pred_y = self.forward(x)
         return pred_y
+
+
+# textCNN hyper_parameters
+embed_size = 768
+num_classes = 2     # positive or negative (1/0)
+max_length = 256
+
+
+class textCNN(nn.Module):
+    def __init__(self, output_channel=3):
+        super(textCNN, self).__init__()
+        self.output_channel = output_channel
+
+        self.conv = nn.Sequential(
+            nn.Conv2d(1, self.output_channel, kernel_size=(2, embed_size)),
+            nn.ReLU(),
+            nn.MaxPool2d((2, 1))
+        )
+        self.fc = nn.Linear(output_channel, num_classes)
+
+    def forward(self, x):
+        x = x.unsqueeze(1)  # add 1 channel (batch_size, 1, seq_len=256, hidden_size=768)
+        batch_size = x.shape[0]
+
+        conv_x = self.conv(x)
+        flat_x = conv_x.view(batch_size, -1)    # (batch_size, output_channel)
+        out = self.fc(flat_x)
+        return out

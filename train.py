@@ -48,6 +48,7 @@ df = pd.read_csv(path, sep=',')
 # from 2014-8-19 to 2017-11-10
 # 3333 in total (Date, Open, High, Low, Close, Volume, OpenInt)
 # print(df)
+df.to_csv('data/googl.us.csv')
 
 # select Close data as example
 data_close = df['Close'].values.reshape(-1, 1)
@@ -105,6 +106,6 @@ for epoch in range(EPOCH):
             print('epoch: {} | step: {} | loss: {}'.format(epoch, step, loss))
             loss_list.append(loss)
 
-model_path = './model_.pth'
+model_path = './model_2dim.pth'
 torch.save(model, model_path)
 

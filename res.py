@@ -60,7 +60,7 @@ x = torch.tensor(x, dtype=torch.float32)
 
 # ------------- evaluate -------------
 
-model_path = './model_.pth'
+model_path = './model_2dim.pth'
 model = torch.load(model_path)
 predict = model(x)
 
