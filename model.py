@@ -2,6 +2,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from transformers import BertModel
+
 
 class NaivePredictor(nn.Module):
     def __init__(self, input_size, hidden_size, n_layers, drop_prob=0.):
@@ -79,26 +81,45 @@ class BiPredictor(nn.Module):
 # textCNN hyper_parameters
 embed_size = 768
 num_classes = 2     # positive or negative (1/0)
-max_length = 256
+seq_len = 256
+output_channel = 3  # for textCNN
 
 
 class textCNN(nn.Module):
-    def __init__(self, output_channel=3):
+    def __init__(self):
         super(textCNN, self).__init__()
-        self.output_channel = output_channel
 
         self.conv = nn.Sequential(
-            nn.Conv2d(1, self.output_channel, kernel_size=(2, embed_size)),
+            nn.Conv2d(1, output_channel, kernel_size=(2, embed_size)),
             nn.ReLU(),
-            nn.MaxPool2d((2, 1))
+            nn.MaxPool2d((seq_len-2+1, 1))
         )
         self.fc = nn.Linear(output_channel, num_classes)
 
     def forward(self, x):
         x = x.unsqueeze(1)  # add 1 channel (batch_size, 1, seq_len=256, hidden_size=768)
         batch_size = x.shape[0]
+        print(x)
 
+        # print(x.shape)
         conv_x = self.conv(x)
+        # print(conv_x.shape)   # (bs, ch, 1, 1)
         flat_x = conv_x.view(batch_size, -1)    # (batch_size, output_channel)
+        # print(flat_x.shape)   # (bs, ch*1*1)
         out = self.fc(flat_x)
+        print(out)
+        return out
+
+
+class BertCNN(nn.Module):
+    def __init__(self, model):
+        super(BertCNN, self).__init__()
+        self.bert = BertModel.from_pretrained(model, output_hidden_states=True, return_dict=True)
+        self.textCNN = textCNN()
+
+    def forward(self, x):
+        input_ids, attention_mask, token_type_ids = x[0], x[1], x[2]
+        bert_outputs = self.bert(input_ids=input_ids, attention_mask=attention_mask, token_type_ids=token_type_ids)
+        last_h_state = bert_outputs.last_hidden_state   # (bs, seq_len, hidden_size)
+        out = self.textCNN(last_h_state)
         return out
