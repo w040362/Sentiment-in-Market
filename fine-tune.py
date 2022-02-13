@@ -11,8 +11,8 @@ from model import textCNN, BertCNN
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 # training hyper
-BATCH_SIZE = 4
-EPOCH = 300
+BATCH_SIZE = 64
+EPOCH = 20
 learning_rate = 1e-3
 weight_decay = 1e-2
 
@@ -78,7 +78,6 @@ class Trainer:
         train_data = Data.DataLoader(token_data, batch_size=BATCH_SIZE, shuffle=True)
         for epoch in range(EPOCH):
             for i, batch in enumerate(train_data):
-                # print(torch.cat((batch[0].unsqueeze(0), batch[1].unsqueeze(0), batch[2].unsqueeze(0)), dim=0).shape)
                 out = self.model(torch.cat((batch[0].unsqueeze(0), batch[1].unsqueeze(0), batch[2].unsqueeze(0)),
                                            dim=0).to(device))
 
@@ -86,10 +85,10 @@ class Trainer:
                 loss = self.loss_func(out, cla.to(device))
                 self.training_loss.append(loss)
 
-                if i % 20 == 0:
+                if i % 40 == 0:
                     print("Epoch: {}, batch: {}, loss: {:.4f}".format(epoch, i, loss))
 
-                if (epoch + 1) % 50 == 0:
+                if (epoch + 1) % 5 == 0:
                     torch.save(self.model.textCNN.state_dict(), 'models/textCNN-e' + str(epoch + 1) + '.model')
 
                 self.optimizer.zero_grad()
@@ -103,6 +102,7 @@ class Trainer:
 
     def test(self):
         test_sentences, test_labels = data_prepare(self.train_file, self.test_ratio, train=False)
+        print(test_labels[0])
         test_token_data = SaDataset(self.tokenizer, test_sentences, test_labels)
 
         total_count = 0
@@ -111,23 +111,24 @@ class Trainer:
         print('Computing...')
         for token in test_token_data:
             out = self.model(torch.cat((token[0].unsqueeze(0), token[1].unsqueeze(0), token[2].unsqueeze(0)),
-                                       dim=0).unsqueeze(1).to(device))     # 1-dim data, dim 1 for batch_size: 1
-            predict = torch.max(out, dim=1)[1].item()
+                                       dim=0).unsqueeze(1).to(device))  # 1-dim data, dim 1 for batch_size: 1
+            pred = torch.max(out, dim=1)[1].item()
 
             total_count += 1
-            if predict == token[3]:
+            if pred == token[3]:
                 match_count += 1
-            if total_count % 100 == 0:
+            if total_count % 1000 == 0:
                 print("{} finished".format(total_count))
         accuracy = match_count / total_count
-        print('Accuracy: '.format(accuracy))
+        print('Accuracy: {}'.format(accuracy))
 
-        # text = '我今天很高兴'
-        # token_text = SaDataset(tokenizer, text, with_labels=False)
-        # x = token_text[0]
-        # x = [p.unsqueeze(0) for p in x]
-        # predict = model(x)
-        # print(predict)
+    def predict(self, text):
+        token_text = SaDataset(self.tokenizer, text, with_labels=False)
+        x = token_text[0]
+        out = self.model(torch.cat((x[0].unsqueeze(0), x[1].unsqueeze(0), x[2].unsqueeze(0)),
+                                   dim=0).unsqueeze(1).to(device))
+        pred = torch.max(out, dim=1)[1].item()
+        return pred
 
 
 # # for batch in train_data:
@@ -138,7 +139,6 @@ class Trainer:
 # #     print(batch[2].shape)
 # #     print(batch[3].shape)   # batch_size, to be unsqueezed
 #
-#
 # for epoch in range(EPOCH):
 #     for i, batch in enumerate(train_data):
 #         out = model(torch.cat((batch[0].unsqueeze(0), batch[1].unsqueeze(0), batch[2].unsqueeze(0)),
@@ -147,6 +147,16 @@ class Trainer:
 #         cla = batch[3]
 #         loss = loss_func(out, cla)
 #         training_loss.append(loss)
+#
+#         if i % 20 == 0:
+#             print("Epoch: {}, batch: {}, loss: {:.4f}".format(epoch, i, loss))
+#
+#         if (epoch + 1) % 50 == 0:
+#             torch.save(model.textCNN.state_dict(), 'models/textCNN-e' + str(epoch + 1) + '.model')
+#
+#         # if epoch % 100 == 0:
+#         #     test_out = model(test_data)
+#         #     test_predict = torch.max(test_out, 1)[1].data.numpy()
 #
 #         optimizer.zero_grad()
 #         loss.backward()
@@ -169,12 +179,14 @@ if __name__ == '__main__':
     model = r'FinBERT_L-12_H-768_A-12_pytorch/'
     # bert = BertModel.from_pretrained(model, output_hidden_states=True, return_dict=True)
     file = 'data/weibo_senti_100k_shuffle.csv'
-    trainer = Trainer(bert_model=model, test_ratio=0.8, train_file=file)
+    trainer = Trainer(bert_model=model, test_ratio=0.7, train_file=file)
 
-    is_train = True
+    is_train = False
     if is_train:
         trainer.train_batch()
     else:
-        # CNN_model_name = 'models/textCNN-e200.model'
-        # trainer.load_model(CNN_model_name)
+        CNN_model_name = 'models/textCNN-e20.model'
+        trainer.load_model(CNN_model_name)
         trainer.test()
+        # res = trainer.predict('今天好'.encode('utf-8'))
+        # print(res)
