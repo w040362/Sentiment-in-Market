@@ -31,7 +31,7 @@ class SaDataset(Data.Dataset):
         sentence = self.sentences[idx]
 
         sentence_tokenized = self.tokenizer(sentence, padding='max_length',
-                                            truncation=True, max_length=200, return_tensors="pt")
+                                            truncation=True, max_length=160, return_tensors="pt")
 
         token_ids = sentence_tokenized['input_ids'].squeeze(0)
         attn_masks = sentence_tokenized['attention_mask'].squeeze(0)
@@ -64,7 +64,7 @@ class Trainer:
     def __init__(self, bert_model, test_ratio, train_file):
         self.tokenizer = BertTokenizer.from_pretrained(bert_model)
         self.test_ratio = test_ratio
-        self.model = BertCNN(bert_model, device)
+        self.model = BertCNN(bert_model, device).to(device)
         self.optimizer = torch.optim.Adam(self.model.textCNN.parameters(),
                                           lr=learning_rate, weight_decay=weight_decay)  # ??
         self.loss_func = nn.CrossEntropyLoss()
@@ -78,11 +78,12 @@ class Trainer:
         train_data = Data.DataLoader(token_data, batch_size=BATCH_SIZE, shuffle=True)
         for epoch in range(EPOCH):
             for i, batch in enumerate(train_data):
+                # print(torch.cat((batch[0].unsqueeze(0), batch[1].unsqueeze(0), batch[2].unsqueeze(0)), dim=0).shape)
                 out = self.model(torch.cat((batch[0].unsqueeze(0), batch[1].unsqueeze(0), batch[2].unsqueeze(0)),
-                                           dim=0))
+                                           dim=0).to(device))
 
                 cla = batch[3]
-                loss = self.loss_func(out, cla)
+                loss = self.loss_func(out, cla.to(device))
                 self.training_loss.append(loss)
 
                 if i % 20 == 0:
@@ -95,18 +96,40 @@ class Trainer:
                 loss.backward()
                 self.optimizer.step()
 
+                del out, batch
+
     def load_model(self, model_path):
         self.model.textCNN.load_state_dict(torch.load(model_path, map_location=lambda storage, loc: storage))
 
     def test(self):
         test_sentences, test_labels = data_prepare(self.train_file, self.test_ratio, train=False)
+        test_token_data = SaDataset(self.tokenizer, test_sentences, test_labels)
 
-#
-# # test_token_data = SaDataset(tokenizer, test_sentences, test_labels)
-# # test_data_input = [test_token_data[:][i] for i in range(3)]
-# # test_data_res = test_token_data[:][3]
-# # print(test_token_label.shape)
-#
+        total_count = 0
+        match_count = 0
+
+        print('Computing...')
+        for token in test_token_data:
+            out = self.model(torch.cat((token[0].unsqueeze(0), token[1].unsqueeze(0), token[2].unsqueeze(0)),
+                                       dim=0).unsqueeze(1).to(device))     # 1-dim data, dim 1 for batch_size: 1
+            predict = torch.max(out, dim=1)[1].item()
+
+            total_count += 1
+            if predict == token[3]:
+                match_count += 1
+            if total_count % 100 == 0:
+                print("{} finished".format(total_count))
+        accuracy = match_count / total_count
+        print('Accuracy: '.format(accuracy))
+
+        # text = '我今天很高兴'
+        # token_text = SaDataset(tokenizer, text, with_labels=False)
+        # x = token_text[0]
+        # x = [p.unsqueeze(0) for p in x]
+        # predict = model(x)
+        # print(predict)
+
+
 # # for batch in train_data:
 # #     print(type(batch))
 # #     print(batch[0].shape)   # batch_size*max_length
@@ -115,12 +138,6 @@ class Trainer:
 # #     print(batch[2].shape)
 # #     print(batch[3].shape)   # batch_size, to be unsqueezed
 #
-# # text = '我今天很高兴'
-# # token_text = SaDataset(tokenizer, text, with_labels=False)
-# # x = token_text[0]
-# # x = [p.unsqueeze(0) for p in x]
-# # predict = model(x)
-# # print(predict)
 #
 # for epoch in range(EPOCH):
 #     for i, batch in enumerate(train_data):
@@ -130,16 +147,6 @@ class Trainer:
 #         cla = batch[3]
 #         loss = loss_func(out, cla)
 #         training_loss.append(loss)
-#
-#         if i % 20 == 0:
-#             print("Epoch: {}, batch: {}, loss: {:.4f}".format(epoch, i, loss))
-#
-#         if (epoch + 1) % 50 == 0:
-#             torch.save(model.textCNN.state_dict(), 'models/textCNN-e' + str(epoch + 1) + '.model')
-#
-#         # if epoch % 100 == 0:
-#         #     test_out = model(test_data)
-#         #     test_predict = torch.max(test_out, 1)[1].data.numpy()
 #
 #         optimizer.zero_grad()
 #         loss.backward()
@@ -168,6 +175,6 @@ if __name__ == '__main__':
     if is_train:
         trainer.train_batch()
     else:
-        CNN_model_name = 'models/textCNN-e200.model'
-        trainer.load_model(CNN_model_name)
+        # CNN_model_name = 'models/textCNN-e200.model'
+        # trainer.load_model(CNN_model_name)
         trainer.test()

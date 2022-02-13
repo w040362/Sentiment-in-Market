@@ -81,7 +81,7 @@ class BiPredictor(nn.Module):
 # textCNN hyper_parameters
 embed_size = 768
 num_classes = 2     # positive or negative (1/0)
-seq_len = 200
+seq_len = 160
 output_channel = 3  # for textCNN
 
 
@@ -115,7 +115,7 @@ class BertCNN(nn.Module):
     def __init__(self, model, device):
         super(BertCNN, self).__init__()
         self.bert = BertModel.from_pretrained(model, output_hidden_states=True, return_dict=True)
-        self.textCNN = textCNN()
+        self.textCNN = textCNN().to(device)
 
     def forward(self, x):
         input_ids, attention_mask, token_type_ids = x[0], x[1], x[2]
