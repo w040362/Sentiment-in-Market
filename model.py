@@ -81,7 +81,7 @@ class BiPredictor(nn.Module):
 # textCNN hyper_parameters
 embed_size = 768
 num_classes = 2     # positive or negative (1/0)
-seq_len = 256
+seq_len = 200
 output_channel = 3  # for textCNN
 
 
@@ -97,7 +97,7 @@ class textCNN(nn.Module):
         self.fc = nn.Linear(output_channel, num_classes)
 
     def forward(self, x):
-        x = x.unsqueeze(1)  # add 1 channel (batch_size, 1, seq_len=256, hidden_size=768)
+        x = x.unsqueeze(1)  # add 1 channel (batch_size, 1, seq_len=200, hidden_size=768)
         batch_size = x.shape[0]
         # print(x)
 
@@ -107,13 +107,12 @@ class textCNN(nn.Module):
         flat_x = conv_x.view(batch_size, -1)    # (batch_size, output_channel)
         # print(flat_x.shape)   # (bs, ch*1*1)
         out = self.fc(flat_x)
-        print(out)
-        print(out.shape)
+        # print(out)
         return out
 
 
 class BertCNN(nn.Module):
-    def __init__(self, model):
+    def __init__(self, model, device):
         super(BertCNN, self).__init__()
         self.bert = BertModel.from_pretrained(model, output_hidden_states=True, return_dict=True)
         self.textCNN = textCNN()
