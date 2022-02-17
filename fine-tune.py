@@ -8,14 +8,6 @@ import torch.utils.data as Data
 from transformers import BertModel, BertTokenizer
 from model import textCNN, BertCNN
 
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
-# training hyper
-BATCH_SIZE = 64
-EPOCH = 20
-learning_rate = 1e-3
-weight_decay = 1e-2
-
 
 class SaDataset(Data.Dataset):
     def __init__(self, tokenizer, sentences, labels=None, with_labels=True):
@@ -45,7 +37,7 @@ class SaDataset(Data.Dataset):
 
 
 def data_prepare(train_file, test_ratio, train=True):
-    data = pd.read_csv(train_file, sep=',', encoding='utf-8')
+    data = pd.read_csv(train_file, sep=',', encoding='utf-8')   # tsv: sep='\t'
     length = len(data)
     # data = sklearn.utils.shuffle(data)
     # data.to_csv('data/weibo_senti_100k_shuffle.csv', encoding='utf-8', index=0, sep=',')
@@ -61,11 +53,11 @@ def data_prepare(train_file, test_ratio, train=True):
 
 
 class Trainer:
-    def __init__(self, bert_model, test_ratio, train_file):
+    def __init__(self, bert_model, test_ratio, train_file, freeze_bert):
         self.tokenizer = BertTokenizer.from_pretrained(bert_model)
         self.test_ratio = test_ratio
-        self.model = BertCNN(bert_model, device).to(device)
-        self.optimizer = torch.optim.Adam(self.model.textCNN.parameters(),
+        self.model = BertCNN(bert_model, device, freeze_bert).to(device)
+        self.optimizer = torch.optim.Adam(self.model.parameters(),
                                           lr=learning_rate, weight_decay=weight_decay)  # ??
         self.loss_func = nn.CrossEntropyLoss()
         self.training_loss = []
@@ -78,27 +70,27 @@ class Trainer:
         train_data = Data.DataLoader(token_data, batch_size=BATCH_SIZE, shuffle=True)
         for epoch in range(EPOCH):
             for i, batch in enumerate(train_data):
+                self.optimizer.zero_grad()
                 out = self.model(torch.cat((batch[0].unsqueeze(0), batch[1].unsqueeze(0), batch[2].unsqueeze(0)),
                                            dim=0).to(device))
 
                 cla = batch[3]
                 loss = self.loss_func(out, cla.to(device))
-                self.training_loss.append(loss)
+                self.training_loss.append(loss.item())
 
-                if i % 40 == 0:
+                if i % 1 == 0:
                     print("Epoch: {}, batch: {}, loss: {:.4f}".format(epoch, i, loss))
 
                 if (epoch + 1) % 5 == 0:
-                    torch.save(self.model.textCNN.state_dict(), 'models/textCNN-e' + str(epoch + 1) + '.model')
+                    torch.save(self.model.state_dict(), 'models/model-e' + str(epoch + 1) + '.model')
 
-                self.optimizer.zero_grad()
                 loss.backward()
                 self.optimizer.step()
 
                 del out, batch
 
     def load_model(self, model_path):
-        self.model.textCNN.load_state_dict(torch.load(model_path, map_location=lambda storage, loc: storage))
+        self.model.load_state_dict(torch.load(model_path, map_location=lambda storage, loc: storage))
 
     def test(self):
         test_sentences, test_labels = data_prepare(self.train_file, self.test_ratio, train=False)
@@ -174,14 +166,27 @@ class Trainer:
 #
 #         # print(cls_embedding.shape)    # (batch_size, num_hidden_layers, hidden_size)
 
+device = torch.device('cpu')
+# device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+# training hyper
+BATCH_SIZE = 4
+EPOCH = 20
+learning_rate = 1e-5
+weight_decay = 1e-2
+
+
+is_train = True
+freeze_bert = False
+
 
 if __name__ == '__main__':
+
     model = r'FinBERT_L-12_H-768_A-12_pytorch/'
     # bert = BertModel.from_pretrained(model, output_hidden_states=True, return_dict=True)
     file = 'data/weibo_senti_100k_shuffle.csv'
-    trainer = Trainer(bert_model=model, test_ratio=0.7, train_file=file)
+    trainer = Trainer(bert_model=model, test_ratio=0.7, train_file=file, freeze_bert=freeze_bert)
 
-    is_train = False
     if is_train:
         trainer.train_batch()
     else:
