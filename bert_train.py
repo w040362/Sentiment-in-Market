@@ -1,5 +1,4 @@
 import pandas as pd
-import numpy as np
 import sklearn
 from tqdm import tqdm
 
@@ -48,7 +47,7 @@ class Trainer:
     def __init__(self, bert_model, test_ratio, train_file, freeze_bert):
         self.tokenizer = BertTokenizer.from_pretrained(bert_model)
         self.test_ratio = test_ratio
-        self.model = BertCNN(bert_model, device, freeze_bert).to(device)
+        self.model = BertCNN(bert_model, freeze_bert).to(device)
         self.optimizer = torch.optim.Adam(self.model.parameters(),
                                           lr=learning_rate, weight_decay=weight_decay)  # ??
         self.loss_func = nn.CrossEntropyLoss()
@@ -60,7 +59,8 @@ class Trainer:
         for sentence, label in examples:
             inputs.append(sentence)
             targets.append(int(label))
-        inputs = self.tokenizer(inputs, padding=True, truncation=True, return_tensors="pt", max_length=160)
+        inputs = self.tokenizer(inputs, padding='max_length', truncation=True, return_tensors="pt",
+                                max_length=160)
         targets = torch.tensor(targets)
         return inputs, targets
 
@@ -69,6 +69,7 @@ class Trainer:
 
         train_data = SaDataset(train_sentences, train_labels)
         train_dataloader = Data.DataLoader(train_data, batch_size=BATCH_SIZE, shuffle=True, collate_fn=self.coffate_fn)
+
         for epoch in range(EPOCH):
             for i, batch in tqdm(enumerate(train_dataloader),
                                  total=len(train_dataloader), desc=f"Training Epoch {epoch}", leave=True):
@@ -127,7 +128,6 @@ EPOCH = 20
 learning_rate = 1e-5
 weight_decay = 1e-2
 
-
 is_train = True
 freeze_bert = False
 
@@ -143,5 +143,5 @@ if __name__ == '__main__':
     else:
         model_name = 'models/model-e20.model'
         trainer.load_model(model_name)
-        # res = trainer.predict('今天好')
-        # print(res)
+        res = trainer.predict('今天好')
+        print(res)

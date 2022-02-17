@@ -6,7 +6,7 @@ import torch
 import torch.nn as nn
 import torch.utils.data as Data
 from transformers import BertModel, BertTokenizer
-from model import textCNN, BertCNN
+from model import BertCNN
 
 
 class SaDataset(Data.Dataset):
