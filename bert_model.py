@@ -7,12 +7,11 @@ from transformers import BertModel
 # textCNN hyper_parameters
 embed_size = 768
 num_classes = 2     # positive or negative (1/0)
-seq_len = 160
 output_channel = 3  # for textCNN
 
 
 class BertCNN(nn.Module):
-    def __init__(self, model, freeze_bert):
+    def __init__(self, model, freeze_bert, seq_len):
         super(BertCNN, self).__init__()
         self.bert = BertModel.from_pretrained(model, output_hidden_states=True, return_dict=True)
         self.freeze_bert = freeze_bert

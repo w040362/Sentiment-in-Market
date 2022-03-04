@@ -5,7 +5,7 @@ from tqdm import tqdm
 import torch
 import torch.nn as nn
 import torch.utils.data as Data
-from transformers import BertModel, BertTokenizer
+from transformers import BertTokenizer
 from bert_model import BertCNN
 
 
@@ -47,7 +47,7 @@ class Trainer:
     def __init__(self, bert_model, test_ratio, train_file, freeze_bert):
         self.tokenizer = BertTokenizer.from_pretrained(bert_model)
         self.test_ratio = test_ratio
-        self.model = BertCNN(bert_model, freeze_bert).to(device)
+        self.model = BertCNN(bert_model, freeze_bert, 160).to(device)
         self.optimizer = torch.optim.Adam(self.model.parameters(),
                                           lr=learning_rate, weight_decay=weight_decay)  # ??
         self.loss_func = nn.CrossEntropyLoss()
