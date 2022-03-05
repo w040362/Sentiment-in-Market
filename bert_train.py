@@ -111,8 +111,7 @@ class Trainer:
         print('Accuracy: {}'.format(accuracy))
 
     def predict(self, text):
-        token = self.tokenizer(text, padding=True, truncation=True, return_tensors="pt", max_length=BERT_LENGTH)
-
+        token = self.tokenizer(text, padding='max_length', truncation=True, return_tensors="pt", max_length=BERT_LENGTH)
         with torch.no_grad():
             out = self.model(token.to(device))
         pred = torch.max(out, dim=1)[1].item()
@@ -128,9 +127,9 @@ EPOCH = 20
 learning_rate = 1e-5
 weight_decay = 1e-2
 
-BERT_LENGTH = 160
+BERT_LENGTH = 200
 
-is_train = True
+is_train = False
 freeze_bert = False
 
 
@@ -144,7 +143,8 @@ if __name__ == '__main__':
     if is_train:
         trainer.train_batch()
     else:
-        model_name = 'models/model-e20.model'
+        model_name = 'models/model-e50.model'
         trainer.load_model(model_name)
-        res = trainer.predict('今天好')
+        # trainer.test()
+        res = trainer.predict('')
         print(res)

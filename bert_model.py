@@ -26,7 +26,7 @@ class BertCNN(nn.Module):
 
     def forward(self, x):
         input_ids, attention_mask, token_type_ids = x['input_ids'], x['token_type_ids'], x['attention_mask']
-        # print(input_ids)
+        # print(input_ids.shape)
         if self.freeze_bert:
             with torch.no_grad():
                 bert_outputs = self.bert(input_ids=input_ids,
