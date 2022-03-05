@@ -47,7 +47,7 @@ class Trainer:
     def __init__(self, bert_model, test_ratio, train_file, freeze_bert):
         self.tokenizer = BertTokenizer.from_pretrained(bert_model)
         self.test_ratio = test_ratio
-        self.model = BertCNN(bert_model, freeze_bert, 160).to(device)
+        self.model = BertCNN(bert_model, freeze_bert, BERT_LENGTH).to(device)
         self.optimizer = torch.optim.Adam(self.model.parameters(),
                                           lr=learning_rate, weight_decay=weight_decay)  # ??
         self.loss_func = nn.CrossEntropyLoss()
@@ -60,7 +60,7 @@ class Trainer:
             inputs.append(sentence)
             targets.append(int(label))
         inputs = self.tokenizer(inputs, padding='max_length', truncation=True, return_tensors="pt",
-                                max_length=160)
+                                max_length=BERT_LENGTH)
         targets = torch.tensor(targets)
         return inputs, targets
 
@@ -84,13 +84,13 @@ class Trainer:
                 if i % 100 == 0:
                     print("Epoch: {}, batch: {}, loss: {:.4f}".format(epoch, i, loss))
 
-                if (epoch + 1) % 5 == 0:
-                    torch.save(self.model.state_dict(), 'models/model-e' + str(epoch + 1) + '.model')
-
                 loss.backward()
                 self.optimizer.step()
 
                 del out, batch
+
+            if (epoch + 1) % 5 == 0:
+                torch.save(self.model.state_dict(), 'models/model-e' + str(epoch + 1) + '.model')
 
     def load_model(self, model_path):
         self.model.load_state_dict(torch.load(model_path, map_location=lambda storage, loc: storage))
@@ -111,7 +111,7 @@ class Trainer:
         print('Accuracy: {}'.format(accuracy))
 
     def predict(self, text):
-        token = self.tokenizer(text, padding=True, truncation=True, return_tensors="pt", max_length=160)
+        token = self.tokenizer(text, padding=True, truncation=True, return_tensors="pt", max_length=BERT_LENGTH)
 
         with torch.no_grad():
             out = self.model(token.to(device))
@@ -128,6 +128,8 @@ EPOCH = 20
 learning_rate = 1e-5
 weight_decay = 1e-2
 
+BERT_LENGTH = 160
+
 is_train = True
 freeze_bert = False
 
@@ -135,7 +137,8 @@ freeze_bert = False
 if __name__ == '__main__':
     model = r'FinBERT_L-12_H-768_A-12_pytorch/'
     # bert = BertModel.from_pretrained(model, output_hidden_states=True, return_dict=True)
-    file = 'data/weibo_senti_100k_shuffle.csv'
+    # file = 'data/weibo_senti_100k_shuffle.csv'
+    file = 'data/merge.csv'
     trainer = Trainer(bert_model=model, test_ratio=0.8, train_file=file, freeze_bert=freeze_bert)
 
     if is_train:

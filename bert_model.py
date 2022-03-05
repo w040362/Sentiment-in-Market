@@ -6,7 +6,7 @@ from transformers import BertModel
 
 # textCNN hyper_parameters
 embed_size = 768
-num_classes = 2     # positive or negative (1/0)
+num_classes = 3     # positive or negative (1/0)
 output_channel = 3  # for textCNN
 
 
@@ -26,6 +26,7 @@ class BertCNN(nn.Module):
 
     def forward(self, x):
         input_ids, attention_mask, token_type_ids = x['input_ids'], x['token_type_ids'], x['attention_mask']
+        # print(input_ids)
         if self.freeze_bert:
             with torch.no_grad():
                 bert_outputs = self.bert(input_ids=input_ids,
