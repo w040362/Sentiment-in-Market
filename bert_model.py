@@ -6,7 +6,7 @@ from transformers import BertModel
 
 # textCNN hyper_parameters
 embed_size = 768
-num_classes = 3     # positive or negative (1/0)
+num_classes = 3     # positive, neutral or negative
 output_channel = 3  # for textCNN
 
 
@@ -17,14 +17,13 @@ class BertCNN(nn.Module):
         self.freeze_bert = freeze_bert
 
         # testCNN classifier
-        self.conv = nn.Sequential(
-            nn.Conv2d(1, output_channel, kernel_size=(2, embed_size)),
-            nn.ReLU()
-        )
-        self.fc = nn.Linear(output_channel, num_classes)        # fc after convolution
+        self.conv1 = nn.Conv2d(1, output_channel, kernel_size=(2, embed_size))
+        self.conv2 = nn.Conv2d(1, output_channel, kernel_size=(3, embed_size))
+        self.conv3 = nn.Conv2d(1, output_channel, kernel_size=(4, embed_size))
+        self.fc = nn.Linear(output_channel*3, num_classes)        # fc after convolution, 3 regions
         # Linear classifier on [cls]
-        self.classifier = nn.Linear(embed_size, num_classes)
-        self.dropout = nn.Dropout(p=0.2)
+        # self.classifier = nn.Linear(embed_size, num_classes)
+        # self.dropout = nn.Dropout(p=0.2)
 
     def forward(self, x):
         input_ids, attention_mask, token_type_ids = x['input_ids'], x['token_type_ids'], x['attention_mask']
@@ -43,13 +42,22 @@ class BertCNN(nn.Module):
         x = last_h_state.unsqueeze(1)   # channel
         batch_size = x.shape[0]
 
-        conv_x = self.conv(x)
-        pool_x = torch.max(conv_x, dim=2)[0]    # maxpool2D
-        flat_x = pool_x.view(batch_size, -1)
-        out = self.fc(flat_x)
+        pool1 = self.textCNN(x, self.conv1)     # example: 3 different region sizes
+        pool2 = self.textCNN(x, self.conv2)
+        pool3 = self.textCNN(x, self.conv3)
+
+        flat1 = pool1.view(batch_size, -1)      # (bs, 3)
+        flat2 = pool2.view(batch_size, -1)
+        flat3 = pool3.view(batch_size, -1)
+        out = self.fc(torch.cat((flat1, flat2, flat3), dim=1))  # (bs, 3*3)
 
         # Linear layer
         # cls = bert_outputs[0][:, 0, :]
         # out = self.classifier(self.dropout(cls))
-        # print(out)
         return out
+
+    def textCNN(self, x, conv):
+        x = conv(x)
+        x = F.relu(x)
+        pool = torch.max(x, dim=2)[0]   # 1-max pooling
+        return pool

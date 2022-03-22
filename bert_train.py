@@ -1,5 +1,6 @@
 import pandas as pd
 import sklearn
+from sklearn.metrics import f1_score
 from tqdm import tqdm
 
 import torch
@@ -65,7 +66,7 @@ class Trainer:
         self.training_loss = []
         self.train_file = train_file
 
-    def coffate_fn(self, examples):
+    def collate_fn(self, examples):
         inputs, targets = [], []
         for sentence, label in examples:
             inputs.append(sentence)
@@ -81,18 +82,11 @@ class Trainer:
 
         train_data = SaDataset(train_sentences, train_labels)
         train_dataloader = Data.DataLoader(train_data, batch_size=BATCH_SIZE, shuffle=True,
-                                           collate_fn=self.coffate_fn)
+                                           collate_fn=self.collate_fn)
 
         for epoch in range(EPOCH):
             for i, batch in tqdm(enumerate(train_dataloader),
                                  total=len(train_dataloader), desc=f"Training Epoch {epoch}", leave=True):
-                ###
-                # inputs, targets = [x for x in batch]
-                # inputs = self.tokenizer(inputs, padding=True, truncation=True, return_tensors="pt",
-                #                         max_length=BERT_LENGTH)
-                # inputs.to(device)
-                # targets = torch.tensor(targets).to(device)
-                ###
                 inputs, targets = [x.to(device) for x in batch]
 
                 self.optimizer.zero_grad()
@@ -120,8 +114,12 @@ class Trainer:
         test_sentences, test_labels = data_prepare(self.train_file,
                                                    self.train_ratio, self.validate_ratio, mode=mode)
         test_data = SaDataset(test_sentences, test_labels)
-        test_dataloader = Data.DataLoader(test_data, batch_size=1, collate_fn=self.coffate_fn)
+        test_dataloader = Data.DataLoader(test_data, batch_size=1, collate_fn=self.collate_fn)
 
+        # for f1_score
+        y_pred = []
+        y_real = []
+        ###
         accuracy = 0.
         # for token in tqdm(test_dataloader, desc=f"Testing: ", leave=False):
         for token in test_dataloader:
@@ -129,12 +127,16 @@ class Trainer:
             with torch.no_grad():
                 out = self.model(inputs)
             accuracy += (torch.max(out, dim=1)[1].item() == targets)
+            y_pred.append(torch.max(out, dim=1)[1].item())
+            y_real.append(targets.item())
 
         accuracy = accuracy / len(test_dataloader)
+        f1_macro = f1_score(y_real, y_pred, average='macro')
         print('Accuracy: {}'.format(accuracy))
+        print('f1_macro: {}'.format(f1_macro))
 
     def predict(self, text):
-        token = self.tokenizer(text, padding='max_length', truncation=True, return_tensors="pt",
+        token = self.tokenizer(text, padding=True, truncation=True, return_tensors="pt",
                                max_length=BERT_LENGTH)
         with torch.no_grad():
             out = self.model(token.to(device))
@@ -160,7 +162,7 @@ freeze_bert = False
 if __name__ == '__main__':
     model = r'FinBERT_L-12_H-768_A-12_pytorch/'
     # bert = BertModel.from_pretrained(model, output_hidden_states=True, return_dict=True)
-    # file = 'data/weibo_senti_100k_shuffle.csv'
+    # file = 'merge.csv'
     file = 'data/weibo_senti_100k_shuffle.csv'
     trainer = Trainer(bert_model=model, train_ratio=0.7, validate_ratio=0.15,
                       train_file=file, freeze_bert=freeze_bert)

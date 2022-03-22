@@ -24,3 +24,12 @@ darnn_model.py & darnn_train.py是LSTM部分的代码
 ​	训练集文件 merge.csv(test set + 0.8 train set)，无预处理	   
 
 ​	生成模型文件 model-e50.model
+
+2022-03-22 bert模型修改
+
+​	bert 不使用max_length padding，改用变长
+
+​	CNN 支持变长操作，一个batch中长度相同
+
+​	Linear 使用最后一个隐藏层的[CLS]，引入dropout=0.2
+
