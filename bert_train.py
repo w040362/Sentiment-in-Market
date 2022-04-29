@@ -100,15 +100,20 @@ class Trainer:
         test_data = SaDataset(test_sentences, test_labels)
         test_dataloader = Data.DataLoader(test_data, batch_size=1, collate_fn=self.coffate_fn)
 
+        res_list = []
         accuracy = 0.
         for token in tqdm(test_dataloader, desc=f"Testing: ", leave=False):
             inputs, targets = [x.to(device) for x in token]
             with torch.no_grad():
                 out = self.model(inputs)
             accuracy += (torch.max(out, dim=1)[1].item() == targets)
+            res_list.append(torch.max(out, dim=1)[1].item())
 
         accuracy = accuracy / len(test_dataloader)
         print('Accuracy: {}'.format(accuracy))
+        dt = pd.DataFrame({'sentence': test_sentences, 'label': test_labels, 'pred': res_list})
+        dt.to_csv(f'res.csv')
+
 
     def predict(self, text):
         token = self.tokenizer(text, padding='max_length', truncation=True, return_tensors="pt", max_length=160)
@@ -119,8 +124,8 @@ class Trainer:
         return pred
 
 
-device = torch.device('cpu')
-# device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+# device = torch.device('cpu')
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 # training hyper
 BATCH_SIZE = 4
@@ -144,6 +149,6 @@ if __name__ == '__main__':
     else:
         model_name = 'models/model-e50.model'
         trainer.load_model(model_name)
-        # trainer.test()
+        trainer.test()
         res = trainer.predict('今天无事发生')
         print(res)
