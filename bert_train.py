@@ -100,7 +100,7 @@ class Trainer:
         test_data = SaDataset(test_sentences, test_labels)
         test_dataloader = Data.DataLoader(test_data, batch_size=1, collate_fn=self.coffate_fn)
 
-        accuracy = 0
+        accuracy = 0.
         for token in tqdm(test_dataloader, desc=f"Testing: ", leave=False):
             inputs, targets = [x.to(device) for x in token]
             with torch.no_grad():
@@ -111,7 +111,7 @@ class Trainer:
         print('Accuracy: {}'.format(accuracy))
 
     def predict(self, text):
-        token = self.tokenizer(text, padding=True, truncation=True, return_tensors="pt", max_length=160)
+        token = self.tokenizer(text, padding='max_length', truncation=True, return_tensors="pt", max_length=160)
 
         with torch.no_grad():
             out = self.model(token.to(device))
@@ -126,22 +126,24 @@ device = torch.device('cpu')
 BATCH_SIZE = 4
 EPOCH = 20
 learning_rate = 1e-5
-weight_decay = 1e-2
+weight_decay = 1e-4
 
-is_train = True
+is_train = False
 freeze_bert = False
 
 
 if __name__ == '__main__':
     model = r'FinBERT_L-12_H-768_A-12_pytorch/'
     # bert = BertModel.from_pretrained(model, output_hidden_states=True, return_dict=True)
-    file = 'data/weibo_senti_100k_shuffle.csv'
+    # file = 'data/weibo_senti_100k_shuffle.csv'
+    file = 'data/label.csv'
     trainer = Trainer(bert_model=model, test_ratio=0.8, train_file=file, freeze_bert=freeze_bert)
 
     if is_train:
         trainer.train_batch()
     else:
-        model_name = 'models/model-e20.model'
+        model_name = 'models/model-e50.model'
         trainer.load_model(model_name)
-        res = trainer.predict('今天好')
+        # trainer.test()
+        res = trainer.predict('今天无事发生')
         print(res)

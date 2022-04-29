@@ -6,7 +6,7 @@ from transformers import BertModel
 
 # textCNN hyper_parameters
 embed_size = 768
-num_classes = 2     # positive or negative (1/0)
+num_classes = 3     # positive or negative (1/0)
 seq_len = 160
 output_channel = 3  # for textCNN
 
