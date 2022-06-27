@@ -1,5 +1,5 @@
 import pandas as pd
-import sklearn
+from sklearn.metrics import f1_score
 from tqdm import tqdm
 
 import torch
@@ -27,8 +27,7 @@ class SaDataset(Data.Dataset):
             return sentence
 
 
-def data_prepare(train_file, test_ratio, train=True):
-    data = pd.read_csv(train_file, sep=',', encoding='utf-8')   # tsv: sep='\t'
+def data_prepare(test_ratio, train=True):
     length = len(data)
     # data = sklearn.utils.shuffle(data)
     # data.to_csv('data/weibo_senti_100k_shuffle.csv', encoding='utf-8', index=0, sep=',')
@@ -44,7 +43,7 @@ def data_prepare(train_file, test_ratio, train=True):
 
 
 class Trainer:
-    def __init__(self, bert_model, train_ratio, train_file, freeze_bert):
+    def __init__(self, bert_model, train_ratio, freeze_bert):
         self.tokenizer = BertTokenizer.from_pretrained(bert_model)
         self.train_ratio = train_ratio
         self.model = BertCNN(bert_model, freeze_bert).to(device)
@@ -52,7 +51,6 @@ class Trainer:
                                           lr=learning_rate, weight_decay=weight_decay)  # ??
         self.loss_func = nn.CrossEntropyLoss()
         self.training_loss = []
-        self.train_file = train_file
 
     def coffate_fn(self, examples):
         inputs, targets = [], []
@@ -65,7 +63,7 @@ class Trainer:
         return inputs, targets
 
     def train_batch(self):
-        train_sentences, train_labels = data_prepare(self.train_file, self.train_ratio, train=True)
+        train_sentences, train_labels = data_prepare(self.train_ratio, train=True)
 
         train_data = SaDataset(train_sentences, train_labels)
         train_dataloader = Data.DataLoader(train_data, batch_size=BATCH_SIZE, shuffle=True, collate_fn=self.coffate_fn)
@@ -96,7 +94,7 @@ class Trainer:
         self.model.load_state_dict(torch.load(model_path, map_location=lambda storage, loc: storage))
 
     def test(self):
-        test_sentences, test_labels = data_prepare(self.train_file, self.train_ratio, train=False)
+        test_sentences, test_labels = data_prepare(self.train_ratio, train=False)
         test_data = SaDataset(test_sentences, test_labels)
         test_dataloader = Data.DataLoader(test_data, batch_size=1, collate_fn=self.coffate_fn)
 
@@ -111,6 +109,10 @@ class Trainer:
 
         accuracy = accuracy / len(test_dataloader)
         print('Accuracy: {}'.format(accuracy))
+        micro_f1 = f1_score(test_labels, res_list, average="micro")
+        print('Micro F1: {}'.format(micro_f1))
+        macro_f1 = f1_score(test_labels, res_list, average="macro")
+        print('Macro F1: {}'.format(macro_f1))
         dt = pd.DataFrame({'sentence': test_sentences, 'label': test_labels, 'pred': res_list})
         dt.to_csv(f'res.csv')
 
@@ -132,7 +134,7 @@ EPOCH = 20
 learning_rate = 1e-5
 weight_decay = 1e-4
 
-is_train = True
+is_train = False
 freeze_bert = False
 
 
@@ -141,14 +143,15 @@ if __name__ == '__main__':
     # bert = BertModel.from_pretrained(model, output_hidden_states=True, return_dict=True)
     # file = 'data/weibo_senti_100k_shuffle.csv'
     file = 'data/label.csv'
-    trainer = Trainer(bert_model=model, train_ratio=0.8, train_file=file, freeze_bert=freeze_bert)
+    trainer = Trainer(bert_model=model, train_ratio=0.8, freeze_bert=freeze_bert)
+    data = pd.read_csv(file, sep=',', encoding='utf-8')   # tsv: sep='\t'
 
     if is_train:
         trainer.train_batch()
     else:
         model_name = 'models/model-e50.model'
         trainer.load_model(model_name)
-        print(trainer.model)
+        # print(trainer.model)
         trainer.test()
-        res = trainer.predict('今天无事发生')
-        print(res)
+        # res = trainer.predict('今天无事发生')
+        # print(res)

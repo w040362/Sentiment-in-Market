@@ -1,4 +1,4 @@
-# Sentiment-in-Market
+### Sentiment-in-Market
 Create on 2022-1-16
 
 bert_model.py & bert_train.py 是BERT+CNN/Linear的模型构建与训练文件
@@ -33,6 +33,14 @@ darnn_model.py & darnn_train.py是LSTM部分的代码
 
 ​	Linear 使用最后一个隐藏层的[CLS]，引入dropout=0.2
 
-2022-04-29 换数据集
+2022-04-29 换数据集，3700 sentence
 
 ​	accuracy 大约0.65
+
+2022-06-27 细节调整
+
+​	修改了model代码中的一处错误
+
+​	完善了fine-tune的模型结构：textCNN增加卷积核种类，Linear从一层变为2层
+
+​	acc 0.67
