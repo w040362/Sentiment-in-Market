@@ -26,7 +26,7 @@ class BertCNN(nn.Module):
         self.classifier = nn.Linear(embed_size, num_classes)    # Linear classifier on [cls]
 
     def forward(self, x):
-        input_ids, attention_mask, token_type_ids = x['input_ids'], x['token_type_ids'], x['attention_mask']
+        input_ids, token_type_ids， attention_mask = x['input_ids'], x['token_type_ids'], x['attention_mask']
         if self.freeze_bert:
             with torch.no_grad():
                 bert_outputs = self.bert(input_ids=input_ids,
