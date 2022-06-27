@@ -44,9 +44,9 @@ def data_prepare(train_file, test_ratio, train=True):
 
 
 class Trainer:
-    def __init__(self, bert_model, test_ratio, train_file, freeze_bert):
+    def __init__(self, bert_model, train_ratio, train_file, freeze_bert):
         self.tokenizer = BertTokenizer.from_pretrained(bert_model)
-        self.test_ratio = test_ratio
+        self.train_ratio = train_ratio
         self.model = BertCNN(bert_model, freeze_bert).to(device)
         self.optimizer = torch.optim.Adam(self.model.parameters(),
                                           lr=learning_rate, weight_decay=weight_decay)  # ??
@@ -65,7 +65,7 @@ class Trainer:
         return inputs, targets
 
     def train_batch(self):
-        train_sentences, train_labels = data_prepare(self.train_file, self.test_ratio, train=True)
+        train_sentences, train_labels = data_prepare(self.train_file, self.train_ratio, train=True)
 
         train_data = SaDataset(train_sentences, train_labels)
         train_dataloader = Data.DataLoader(train_data, batch_size=BATCH_SIZE, shuffle=True, collate_fn=self.coffate_fn)
@@ -96,7 +96,7 @@ class Trainer:
         self.model.load_state_dict(torch.load(model_path, map_location=lambda storage, loc: storage))
 
     def test(self):
-        test_sentences, test_labels = data_prepare(self.train_file, self.test_ratio, train=False)
+        test_sentences, test_labels = data_prepare(self.train_file, self.train_ratio, train=False)
         test_data = SaDataset(test_sentences, test_labels)
         test_dataloader = Data.DataLoader(test_data, batch_size=1, collate_fn=self.coffate_fn)
 
@@ -113,7 +113,6 @@ class Trainer:
         print('Accuracy: {}'.format(accuracy))
         dt = pd.DataFrame({'sentence': test_sentences, 'label': test_labels, 'pred': res_list})
         dt.to_csv(f'res.csv')
-
 
     def predict(self, text):
         token = self.tokenizer(text, padding='max_length', truncation=True, return_tensors="pt", max_length=160)
@@ -133,7 +132,7 @@ EPOCH = 20
 learning_rate = 1e-5
 weight_decay = 1e-4
 
-is_train = False
+is_train = True
 freeze_bert = False
 
 
@@ -142,13 +141,14 @@ if __name__ == '__main__':
     # bert = BertModel.from_pretrained(model, output_hidden_states=True, return_dict=True)
     # file = 'data/weibo_senti_100k_shuffle.csv'
     file = 'data/label.csv'
-    trainer = Trainer(bert_model=model, test_ratio=0.8, train_file=file, freeze_bert=freeze_bert)
+    trainer = Trainer(bert_model=model, train_ratio=0.8, train_file=file, freeze_bert=freeze_bert)
 
     if is_train:
         trainer.train_batch()
     else:
         model_name = 'models/model-e50.model'
         trainer.load_model(model_name)
+        print(trainer.model)
         trainer.test()
         res = trainer.predict('今天无事发生')
         print(res)

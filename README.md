@@ -33,3 +33,6 @@ darnn_model.py & darnn_train.py是LSTM部分的代码
 
 ​	Linear 使用最后一个隐藏层的[CLS]，引入dropout=0.2
 
+2022-04-29 换数据集
+
+​	accuracy 大约0.65
